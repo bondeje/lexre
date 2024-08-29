@@ -258,6 +258,7 @@ int NFA_to_DFA(NFA * nfa, DFA * dfa) {
     size_t dfa_index = 0;
     while (dfa_index < dfa_states.fill /* there is another state to process in dfa */) {
         // increment processing state
+        //DFATransition * str = dfa_states.bins[dfa_index]
         for (int i = 0; i < symarr.nsyms; i++) {
             DFAState_map * dfa_state_item = dfa_states.bins + dfa_index;
             // U = e-closure(move(T, a))

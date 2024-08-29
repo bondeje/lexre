@@ -59,6 +59,8 @@ char const * TEST_REGEX[] = {
     "[^\\\\\\^$.[|()*?]", // nonclass_escape. these are characters that must be escaped in a symbol outside a character class or lookaround
     "[\\\\\\-\\]\\^]", // unescaped character class symbols
     "[^\\\\\\-\\]\\^]", // escaped character class symbols
+    // for peggy
+    "'((\\\\.)|[^'\\\\])*'",
     NULL
 };
 
@@ -111,6 +113,8 @@ char const * TEST_REGEX_PP[] = {
     "[^\\\\\\^$.[|()*?]",
     "[\\\\\\-\\]\\^]",
     "[^\\\\\\-\\]\\^]",
+    // for peggy
+    "'((\\\\.)|[^'\\\\])*'",
     NULL
 };
 
@@ -1967,6 +1971,15 @@ TestString * TEST_REGEX_STRINGS[] = {
         {.cstr = "a", .match = {.len = 1, .str = "a"}},
         {.cstr = NULL},
     }[0],
+    // "'((\\\\.)|[^'\\\\])*'"
+    &(TestString[]){
+        {.cstr = "''", .match = {.len = 2, .str = "''"}},
+        {.cstr = "'abc\\r'", .match = {.len = 7, .str = "'abc\\r'"}},
+        {.cstr = "'abc\\''", .match = {.len = 7, .str = "'abc\\''"}},
+        {.cstr = "'abc\\\\d'", .match = {.len = 8, .str = "'abc\\\\d'"}},
+        {.cstr = "'abc\\\\\\n'", .match = {.len = 9, .str = "'abc\\\\\\n'"}},
+        {.cstr = NULL},
+    }[0],
     (TestString *)NULL
 };
 
@@ -2060,9 +2073,9 @@ int test_regex(void) {
         size_t len = strlen(TEST_REGEX[i]);
         nerrors += CHECK(!lexre_compile_pattern(TEST_REGEX[i], len, &av, 0), "failed to compile regex pattern: %s\n", TEST_REGEX[i]);
         
-        //if (!strcmp(TEST_REGEX[i], "/\\*((\\*[^/])|[^*])*\\*/)")) {
-        //    DFA_print((DFA *)&av);
-        //}
+        if (!strcmp(TEST_REGEX[i], "'((\\\\.)|[^'\\\\])*'")) {
+            DFA_print((DFA *)&av);
+        }
         
         while (TEST_REGEX_STRINGS[i][j].cstr) {
             nerrors += check_regex(&av, TEST_REGEX_STRINGS[i] + j);

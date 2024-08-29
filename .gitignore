@@ -2,6 +2,7 @@ bin/peggy
 bin/test
 .vscode/
 lib/peggy
+test/gnu_test
 
 # Prerequisites
 *.d
