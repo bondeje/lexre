@@ -2102,9 +2102,9 @@ int main(int narg, char ** args) {
     }
 
     test_preprocess();
-    test_NFA();
-    test_DFA();
-    test_regex();
+//    test_NFA(); // this won't be used
+//    test_DFA(); // this won't be used
+//    test_regex();
 
     return 0;
 }

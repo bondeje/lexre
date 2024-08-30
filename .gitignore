@@ -2,7 +2,9 @@ bin/peggy
 bin/test
 .vscode/
 lib/peggy
+lib/pcre2
 test/gnu_test
+lexre_old.grmr
 
 # Prerequisites
 *.d

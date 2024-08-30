@@ -1,68 +1,90 @@
 export = re
-import = reparser
+import = lexreparser
 
 punctuator:
-    '*' | '|' | '.' | '^' | '$' | '?' | '(' | ')' | '[' | ']' | '-' | '=' | '!'
+    '*' | '|' | '.' | '^' | '$' | '?' | '(' | ')' | '[' | ']' | '-' | '=' | '!' | '<' | ',' | '+' | '}' | '{'
 
 // characters are any unescaped normal printing characters. cannot be "." else sequence will capture everything
-character:
-    "[^\\\\\\^$.[|()*?]" // don't need to escape { and + because they are handled in preprocess
-    // "[^\\\\^$.\\[|()*+?{]"
 
-any_character:
-    "."
+// normally escaped character
+meta:
+    "[\\\\\\^$.[|()*+?{]"
+
+// escaped characters in character class
+char_class_meta:
+    "[\\\\\\-\\]\\^]"
+
+newline:
+    "\n"
 
 re_escape:
     "\\\\"
 
+any_byte:
+    "."
+
 token:
-    punctuator | character | re_escape | any_character // any_character just to capture anything else. Note for multibyte, this must change
+    punctuator | any_byte
 
 // characters that must be escaped: \^$.[|()*+?{
-nonclass_escape:
-    "[\\\\\\^$.[|()*?]" // don't need to escape { and + because they are handled in preprocess
-    // "[\\\\^$.\\[|()*+?{]"
+non_escape:
+    "[^\\\\^$.\\[|()*+?{]"
+
+character_class:
+    "[^\\\\\\-\\]\\^]"
+
+range(re_build_range):
+    // note that this is basically: "class_char", but I don't want the build action on it
+    (escaped_character | character_class), '-', (escaped_character | character_class)
+
+char_class(re_build_char_class):
+    '[', '^'?, (range | escaped_character | character_class)+, ']'
 
 // build symbol should just pass the char_class or build character from single_car, which may be recursive
 symbol(re_build_symbol):
-    char_class | re_escape, nonclass_escape | '$' | '.' | '^' | character
+    '^' | '$' | escaped_character | non_escape
 
-non_lparen:
+non_rparen:
     "[^)]"
 
-lookaround(re_build_lookahead):
-    '(', '?', ('=' | '!'), (re_escape, ')' | non_lparen)+, ')'
+simple_escape:
+    re_escape, any_byte
 
-element(re_pass):
-    lookaround | '(', choice, ')' | symbol
+hex_digit:
+    "[0-9a-fA-F]"
 
-// characters that must be escaped: \%-[]
-character_class:
-    "[^\\\\\\-\\]\\^]"
-    //"[^\\\\\\%\\-\\[\\]]"
+unicode4:
+    'u'
 
-class_escape:
-    "[\\\\\\-\\]\\^]"
-    //"[\\\\\\%\\-\\[\\]]"
-    
-char_class:
-    '[', '^'?, (range | re_escape, class_escape | character_class)+, ']'
+unicode8:
+    'U'
 
-range(re_check_range):
-    // need to change this to (re_escape, class_escape | character_class), '-', (re_escape, class_escape | character_class)
-    (re_escape, class_escape | character_class), '-', (re_escape, class_escape | character_class)
+unicode_seq:
+    re_escape, (unicode4, hex_digit{4} | unicode8, hex_digit{8})
+
+escaped_character:
+    unicode_seq | simple_escape
+
+lookahead(re_build_lookahead):
+    '(', '?', ('=' | '!'), choice, ')'
+
+lookbehind(re_build_lookahead):
+    '(', '?', '<', ('=' | '!'), (escaped_character | non_rparen)+, ')'
+
+element(re_element):
+    lookbehind | lookahead | '(', choice, ')' | char_class | symbol
+
+digit:
+    "[0-9]"
+
+repeated(re_build_repeated):
+    element, ('+' | '*' | '?' | '{', digit*, ','?, digit*, '}')?
+
+sequence(re_build_sequence):
+    repeated+
 
 choice(re_build_choice):
     '|'.sequence
 
-sequence(re_build_sequence):
-    (kleene | optional | element)+
-
-optional(re_build_optional):
-    element, '?'
-
-kleene(re_build_kleene):
-    element, '*'
-
-re(re_build_nfa):
+re(re_build_lexre):
     choice
