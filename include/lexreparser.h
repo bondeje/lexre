@@ -12,6 +12,8 @@ typedef struct LexreBuilder {
     Parser parser;
     RegExpr * entry;
     MemPoolManager * mgr; // memory pool for the RegExpr and subexpressions
+    char * regex_pp;
+    size_t regex_pp_len;
 } LexreBuilder;
 
 #define LexreBuilder_build(type, pleb, ...) CAT(type, _new)((pleb)->mgr, __VA_ARGS__)
@@ -22,6 +24,10 @@ typedef struct LexreNode {
     ASTNode node;
     RegExpr * expr;
 } LexreNode;
+
+void LexreBuilder_init(LexreBuilder * reb);
+void LexreBuilder_parse(LexreBuilder * reb, char const * regex_in, size_t regex_in_len);
+void LexreBuilder_dest(LexreBuilder * reb);
 
 ASTNode * re_build_range(Production * prod, Parser * parser, ASTNode * node);
 ASTNode * re_build_char_class(Production * prod, Parser * parser, ASTNode * node);

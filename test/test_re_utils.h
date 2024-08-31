@@ -1,10 +1,17 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#include "nfa.h"
-#include "dfa.h"
+//#include "nfa.h"
+//#include "dfa.h"
 #include "lexre.h"
 
+typedef struct TestString {
+    struct MatchString match;
+    char const * cstr;
+    unsigned int flags;
+} TestString;
+
+/*
 typedef struct TestTransition {
     char const * symbol;
     size_t symbol_len;
@@ -16,12 +23,6 @@ typedef struct TestState {
     size_t n_out;
     struct TestTransition ** t_out;
 } TestState;
-
-typedef struct TestString {
-    struct MatchString match;
-    char const * cstr;
-    unsigned int flags;
-} TestString;
 
 #define TEST_TRANSITION(symbol_, symbol_len_, state_end_) (struct TestTransition){ \
     .symbol = symbol_, \
@@ -46,6 +47,6 @@ int check_Symbol(Symbol * uut, Symbol * ref, int i);
 int check_DFATransition(DFATransition ** uut, DFATransition ** ref, int i);
 
 int check_DFA(DFA * uut, DFA * ref);
-
+*/
 //int check_regex(DFA * dfa, TestString * test);
-int check_regex(struct lexre * av, TestString * test);
+int check_regex(struct Lexre * av, TestString * test);

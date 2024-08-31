@@ -1,4 +1,36 @@
+#include <stdbool.h>
 #include "regexpr.h"
+
+// singletons
+struct Symbol empty_symbol = {
+    .expr = {.inter = &(RegExprInterface){.eval = match_empty_symbol}},
+    .sym = "",
+    .sym_len = 0,
+};
+
+struct Symbol eos_symbol = {
+    .expr = {.inter = &(RegExprInterface){.eval = match_eos}},
+    .sym = "\0eos",
+    .sym_len = 4,
+};
+
+struct Symbol bos_symbol = {
+    .expr = {.inter = &(RegExprInterface){.eval = match_bos}},
+    .sym = "\0bos",
+    .sym_len = 4,
+};
+
+struct Symbol any_symbol = {
+    .expr = {.inter = &(RegExprInterface){.eval = match_any}},
+    .sym = "\0any",
+    .sym_len = 4,
+};
+
+struct Symbol any_nonl_symbol = {
+    .expr = {.inter = &(RegExprInterface){.eval = match_any_nonl}},
+    .sym = "\0any_nonl",
+    .sym_len = 9,
+};
 
 struct RegExprInterface Symbol_inter = {
     .eval = match_symbol
@@ -40,7 +72,7 @@ SRangeExpr * SRangeExpr_new(MemPoolManager * mgr, char low, char high) {
     SRangeExpr * out = MemPoolManager_aligned_alloc(mgr, sizeof(SRangeExpr), _Alignof(SRangeExpr));
     out->low = low;
     out->high = high;
-    ((RegExpr *)out)->inter = &RangeExpr_inter;
+    ((RegExpr *)out)->inter = &SRangeExpr_inter;
     return out;
 }
 
@@ -64,7 +96,7 @@ CharSet * CharSet_new(MemPoolManager * mgr, char const * set, unsigned char set_
     CharSet * out = MemPoolManager_aligned_alloc(mgr, sizeof(CharSet), _Alignof(CharSet));
     out->sym = set;
     out->sym_len = set_len;
-    ((RegExpr *)out)->inter = &Symbol_inter;
+    ((RegExpr *)out)->inter = &CharSet_inter;
     return out;
 }
 
@@ -135,6 +167,7 @@ LookbehindExpr * LookbehindExpr_new(MemPoolManager * mgr, Symbol * seq, _Bool po
     } else {
         ((RegExpr *)out)->inter = &LookbehindExpr_neg_inter;
     }
+    return out;
 }
 
 struct RegExprInterface RepExpr_inter = {
@@ -153,22 +186,22 @@ RepExpr * RepExpr_new(MemPoolManager * mgr, RegExpr * subexpr, unsigned int min_
 
 
 // not sure this would ever actually be used
-int match_empty_symbol(Lexre * lexre, RegExpr * regexpr) {
+int match_empty_symbol(Lexre * lexre, RegExpr const * regexpr) {
     // does not advance
     return 0;
 }
 
-int match_eos(Lexre * lexre, RegExpr * regexpr) {
+int match_eos(Lexre * lexre, RegExpr const * regexpr) {
     // does not advance
     return !Lexre_remain(lexre);
 }
 
-int match_bos(Lexre * lexre, RegExpr * regexpr) {
+int match_bos(Lexre * lexre, RegExpr const * regexpr) {
     // does not advance
     return !Lexre_tell(lexre);
 }
 
-int match_any(Lexre * lexre, RegExpr * regexpr) {
+int match_any(Lexre * lexre, RegExpr const * regexpr) {
     if (Lexre_remain(lexre)) {
         Lexre_advance(lexre);
         return 1;
@@ -176,7 +209,7 @@ int match_any(Lexre * lexre, RegExpr * regexpr) {
     return 0;
 }
 
-int match_any_nonl(Lexre * lexre, RegExpr * regexpr) {
+int match_any_nonl(Lexre * lexre, RegExpr const * regexpr) {
     if (Lexre_remain(lexre) && Lexre_get_byte(lexre) != '\n') {
         Lexre_advance(lexre);
         return 1;
@@ -184,7 +217,7 @@ int match_any_nonl(Lexre * lexre, RegExpr * regexpr) {
     return 0;
 }
 
-int match_symbol(Lexre * lexre, RegExpr * regexpr) {
+int match_symbol(Lexre * lexre, RegExpr const * regexpr) {
     unsigned char sym_len = ((Symbol *)regexpr)->sym_len;
     if (Lexre_remain(lexre) < sym_len) {
         return 0;
@@ -202,7 +235,7 @@ int match_symbol(Lexre * lexre, RegExpr * regexpr) {
     return 1;
 }
 
-int match_range_expr(Lexre * lexre, RegExpr * regexpr) {
+int match_range_expr(Lexre * lexre, RegExpr const * regexpr) {
     RangeExpr * range = (RangeExpr *)regexpr;
     if (Lexre_remain(lexre) < range->nbytes) {
         return 0;
@@ -215,8 +248,8 @@ int match_range_expr(Lexre * lexre, RegExpr * regexpr) {
     return 1;
 }
 
-int match_srange_expr(Lexre * lexre, RegExpr * regexpr) {
-    RangeExpr * range = (RangeExpr *)regexpr;
+int match_srange_expr(Lexre * lexre, RegExpr const * regexpr) {
+    SRangeExpr * range = (SRangeExpr *)regexpr;
     if (!Lexre_remain(lexre)) {
         return 0;
     }
@@ -228,21 +261,31 @@ int match_srange_expr(Lexre * lexre, RegExpr * regexpr) {
     return 1;
 }
 
-int match_seq(Lexre * lexre, RegExpr * regexpr) {
+_Bool is_opt(RegExpr const * regexpr) {
+    if (regexpr->inter == &RepExpr_inter) {
+        RepExpr * rep = (RepExpr *)regexpr;
+        return !rep->min_rep;
+    }
+    return false;
+}
+
+int match_seq(Lexre * lexre, RegExpr const * regexpr) {
     SeqExpr * seq = (SeqExpr *)regexpr;
     size_t start = Lexre_tell(lexre);
-    for (unsigned int i = 0; i < seq->nsub; i++) {
+    size_t i = 0;
+    while (i < seq->nsub) {
         RegExpr * su = seq->subexprs[i];
-        if (!su->inter->eval(lexre, su)) {
+        if (!su->inter->eval(lexre, su)) { // failed
             Lexre_seek(lexre, start, SEEK_SET);
             return 0;
         }
+        i++;
     }
     return 1;
 }
 
 // set of 1-byte chars. This is basically match_choice_expr for single characters
-int match_char_set(Lexre * lexre, RegExpr * regexpr) {
+int match_char_set(Lexre * lexre, RegExpr const * regexpr) {
     if (!Lexre_remain(lexre)) {
         return 0;
     }
@@ -259,7 +302,7 @@ int match_char_set(Lexre * lexre, RegExpr * regexpr) {
     return 0;
 }
 
-int match_choice_expr(Lexre * lexre, RegExpr * regexpr) { 
+int match_choice_expr(Lexre * lexre, RegExpr const * regexpr) { 
     ChoiceExpr * choice = (ChoiceExpr *)regexpr;
     for (unsigned int i = 0; i < choice->nsub; i++) {
         RegExpr * su = choice->subexprs[i];
@@ -273,7 +316,7 @@ int match_choice_expr(Lexre * lexre, RegExpr * regexpr) {
 match_eval * match_char_class = &match_choice_expr;
 
 // only advances one byte
-int match_char_class_inv(Lexre * lexre, RegExpr * regexpr) { 
+int match_char_class_inv(Lexre * lexre, RegExpr const * regexpr) { 
     ChoiceExpr * choice = (ChoiceExpr *)regexpr;
     for (unsigned int i = 0; i < choice->nsub; i++) {
         RegExpr * su = choice->subexprs[i];
@@ -285,7 +328,7 @@ int match_char_class_inv(Lexre * lexre, RegExpr * regexpr) {
     return 1;
 }
 
-int match_lookahead_pos(Lexre * lexre, RegExpr * regexpre) {
+int match_lookahead_pos(Lexre * lexre, RegExpr const * regexpre) {
     LookaheadExpr * look = (LookaheadExpr *)regexpre;
     size_t start = Lexre_tell(lexre);
     if (((DerivedExpr *)look)->subexpr->inter->eval(lexre, ((DerivedExpr *)look)->subexpr)) {
@@ -295,7 +338,7 @@ int match_lookahead_pos(Lexre * lexre, RegExpr * regexpre) {
     return 0;
 }
 
-int match_lookahead_neg(Lexre * lexre, RegExpr * regexpre) {
+int match_lookahead_neg(Lexre * lexre, RegExpr const * regexpre) {
     LookaheadExpr * look = (LookaheadExpr *)regexpre;
     size_t start = Lexre_tell(lexre);
     if (((DerivedExpr *)look)->subexpr->inter->eval(lexre, ((DerivedExpr *)look)->subexpr)) {
@@ -305,7 +348,7 @@ int match_lookahead_neg(Lexre * lexre, RegExpr * regexpre) {
     return 1;
 }
 
-int match_lookbehind_pos(Lexre * lexre, RegExpr * regexpre) {
+int match_lookbehind_pos(Lexre * lexre, RegExpr const * regexpre) {
     LookbehindExpr * look = (LookbehindExpr *)regexpre;
     // not enough space to check string without invoking U.B.
     if (Lexre_tell(lexre) < look->seq->sym_len) {
@@ -321,7 +364,7 @@ int match_lookbehind_pos(Lexre * lexre, RegExpr * regexpre) {
     return ((RegExpr *)look->seq)->inter->eval(&backlexre, ((RegExpr *)look->seq));
 }
 
-int match_lookbehind_neg(Lexre * lexre, RegExpr * regexpre) {
+int match_lookbehind_neg(Lexre * lexre, RegExpr const * regexpre) {
     LookbehindExpr * look = (LookbehindExpr *)regexpre;
     // not enough space to check string without invoking U.B.
     if (Lexre_tell(lexre) < look->seq->sym_len) {
@@ -337,7 +380,7 @@ int match_lookbehind_neg(Lexre * lexre, RegExpr * regexpre) {
     return !((RegExpr *)look->seq)->inter->eval(&backlexre, ((RegExpr *)look->seq));
 }
 
-int match_rep(Lexre * lexre, RegExpr * regexpr) {
+int match_rep(Lexre * lexre, RegExpr const * regexpr) {
     RepExpr * rep = (RepExpr *)regexpr;
     RegExpr * sub = ((DerivedExpr *)rep)->subexpr;
     size_t start = Lexre_tell(lexre);

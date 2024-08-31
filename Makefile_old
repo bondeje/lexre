@@ -21,8 +21,8 @@ IFLAGS = -I$(INC_DIR) -I$(LIB_DIR)
 LFLAGS = '-Wl,-rpath,$$ORIGIN/.' '-Wl,-rpath,$$ORIGIN/$(BIN_DIR)' -L$(BIN_DIR) -lpeggy
 LFLAGS_TEST = $(LFLAGS) -llexred
 
-LIB_OBJS = $(SRC_DIR)/$(PEG_MODULE).o $(SRC_DIR)/lexreparser.o $(SRC_DIR)/lexre.o $(SRC_DIR)/regexpr.o $(SRC_DIR)/reutils.o
-LIB_OBJS_DBG = $(SRC_DIR)/$(PEG_MODULE).do $(SRC_DIR)/lexreparser.do $(SRC_DIR)/lexre.do $(SRC_DIR)/regexpr.do $(SRC_DIR)/reutils.do
+LIB_OBJS = $(SRC_DIR)/$(PEG_MODULE).o $(SRC_DIR)/reparser.o $(SRC_DIR)/nfa.o $(SRC_DIR)/thompson.o $(SRC_DIR)/dfa.o $(SRC_DIR)/lexre.o $(SRC_DIR)/fa.o
+LIB_OBJS_DBG = $(SRC_DIR)/$(PEG_MODULE).do $(SRC_DIR)/reparser.do $(SRC_DIR)/nfa.do $(SRC_DIR)/thompson.do $(SRC_DIR)/dfa.do $(SRC_DIR)/lexre.do $(SRC_DIR)/fa.do
 TEST_SRCS = $(TEST_DIR)/test.do $(TEST_DIR)/test_utils.do $(TEST_DIR)/test_re_utils.do
 
 all: $(BIN_DIR)/lib$(NAME).so $(BIN_DIR)/lib$(NAME)d.so $(BIN_DIR)/test
@@ -38,10 +38,10 @@ $(BIN_DIR)/lib$(NAME).so: $(INC_DIR)/$(PEG_MODULE).h $(LIB_OBJS)
 	$(CC) -shared -fPIC $(LIB_OBJS) -o $@ $(LFLAGS)
 
 $(BIN_DIR)/lib$(NAME)d.so: $(INC_DIR)/$(PEG_MODULE).h $(LIB_OBJS_DBG)
+	@if [ -n "$(SANITIZE)" ] ; then export DBGOPT="-fsanitize=address,undefined"; else export DBGOPT="" ; fi ; \
 	$(CC) -shared -fPIC $(LIB_OBJS_DBG) -o $@ $(LFLAGS_TEST)
 
 $(BIN_DIR)/test: $(BIN_DIR)/lib$(NAME)d.so $(TEST_SRCS)
-	@if [ -n "$(SANITIZE)" ] ; then export DBGOPT="-fsanitize=address,undefined"; else export DBGOPT="" ; fi ; \
 	$(CC) $(CFLAGS_TEST) $$DBGOPT $(IFLAGS) $(TEST_SRCS) -o $@ $(LFLAGS_TEST)
 
 check: $(BIN_DIR)/test
@@ -51,7 +51,6 @@ clean:
 	rm -rf $(BIN_DIR)/lib$(NAME).so $(BIN_DIR)/lib$(NAME)d.so $(BIN_DIR)/test
 	rm -f $(INC_DIR)/re.h $(SRC_DIR)/re.c *.log
 	rm -f $(SRC_DIR)/*.o $(SRC_DIR)/*.do
-	rm -f $(TEST_DIR)/*.o $(TEST_DIR)/*.do
 
 .SUFFIXES: .c .o .do
 # should build in a compile flag to use PCRE2 if USE_PCRE2 is set

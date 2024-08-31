@@ -4,6 +4,7 @@ bin/test
 lib/peggy
 lib/pcre2
 test/gnu_test
+test/python_test
 lexre_old.grmr
 
 # Prerequisites

@@ -1,12 +1,13 @@
+#ifndef REGEXPR_H
+#define REGEXPR_H
+
 #include <stddef.h>
-#include <stdint.h>
+#include <stdio.h>
 
 #include "lexre.h"
 
-typedef struct RegExpr RegExpr;
-
 // returns 1 for success, 0 for failure
-typedef int match_eval(Lexre * lexre, RegExpr * regexpr);
+typedef int match_eval(Lexre * lexre, RegExpr const * regexpr);
 
 typedef struct RegExprInterface {
     match_eval * eval;
@@ -52,7 +53,6 @@ typedef struct SRangeExpr {
     char high;
 } SRangeExpr;
 
-BUILD_ALIGNMENT_STRUCT(SRangeExpr)
 SRangeExpr * SRangeExpr_new(MemPoolManager * mgr, char low, char high);
 
 #define SeqExpr ChainedExpr
@@ -83,74 +83,54 @@ typedef struct RepExpr {
 RepExpr * RepExpr_new(MemPoolManager * mgr, RegExpr * subexpr, unsigned int min_rep, unsigned int max_rep);
 
 // not sure this would ever actually be used
-int match_empty_symbol(Lexre * lexre, RegExpr * regexpr);
+int match_empty_symbol(Lexre * lexre, RegExpr const * regexpr);
 
-int match_eos(Lexre * lexre, RegExpr * regexpr);
+int match_eos(Lexre * lexre, RegExpr const * regexpr);
 
-int match_bos(Lexre * lexre, RegExpr * regexpr);
+int match_bos(Lexre * lexre, RegExpr const * regexpr);
 
-int match_any(Lexre * lexre, RegExpr * regexpr);
+int match_any(Lexre * lexre, RegExpr const * regexpr);
 
-int match_any_nonl(Lexre * lexre, RegExpr * regexpr);
+int match_any_nonl(Lexre * lexre, RegExpr const * regexpr);
 
-int match_symbol(Lexre * lexre, RegExpr * regexpr);
+int match_symbol(Lexre * lexre, RegExpr const * regexpr);
 
-uint32_t to_uint32_t(char * str, unsigned char str_len);
+int match_range_expr(Lexre * lexre, RegExpr const * regexpr);
 
-int match_range_expr(Lexre * lexre, RegExpr * regexpr);
+int match_srange_expr(Lexre * lexre, RegExpr const * regexpr);
 
-int match_srange_expr(Lexre * lexre, RegExpr * regexpr);
-
-int match_seq(Lexre * lexre, RegExpr * regexpr);
+int match_seq(Lexre * lexre, RegExpr const * regexpr);
 
 // set of 1-byte chars. This is basically match_choice_expr for single characters
-int match_char_set(Lexre * lexre, RegExpr * regexpr);
+int match_char_set(Lexre * lexre, RegExpr const * regexpr);
 
-int match_choice_expr(Lexre * lexre, RegExpr * regexpr);
+int match_choice_expr(Lexre * lexre, RegExpr const * regexpr);
 
 // match_char_class handled internally
 
 // only advances one byte
-int match_char_class_inv(Lexre * lexre, RegExpr * regexpr);
+int match_char_class_inv(Lexre * lexre, RegExpr const * regexpr);
 
-int match_lookahead_pos(Lexre * lexre, RegExpr * regexpre);
+int match_lookahead_pos(Lexre * lexre, RegExpr const * regexpre);
 
-int match_lookahead_neg(Lexre * lexre, RegExpr * regexpre);
+int match_lookahead_neg(Lexre * lexre, RegExpr const * regexpre);
 
-int match_lookbehind_pos(Lexre * lexre, RegExpr * regexpre);
+int match_lookbehind_pos(Lexre * lexre, RegExpr const * regexpre);
 
-int match_lookbehind_neg(Lexre * lexre, RegExpr * regexpre);
+int match_lookbehind_neg(Lexre * lexre, RegExpr const * regexpre);
 
-int match_rep(Lexre * lexre, RegExpr * regexpr);
+int match_rep(Lexre * lexre, RegExpr const * regexpr);
 
 // singletons
-struct Symbol empty_symbol = {
-    .expr = {.inter = &(RegExprInterface){.eval = match_empty_symbol}},
-    .sym = "",
-    .sym_len = 0,
-};
+extern struct Symbol empty_symbol;
 
-struct Symbol eos_symbol = {
-    .expr = {.inter = &(RegExprInterface){.eval = match_eos}},
-    .sym = "\0eos",
-    .sym_len = 4,
-};
+extern struct Symbol eos_symbol;
 
-struct Symbol bos_symbol = {
-    .expr = {.inter = &(RegExprInterface){.eval = match_bos}},
-    .sym = "\0bos",
-    .sym_len = 4,
-};
+extern struct Symbol bos_symbol;
 
-struct Symbol any_symbol = {
-    .expr = {.inter = &(RegExprInterface){.eval = match_any}},
-    .sym = "\0any",
-    .sym_len = 4,
-};
+extern struct Symbol any_symbol;
 
-struct Symbol any_nonl_symbol = {
-    .expr = {.inter = &(RegExprInterface){.eval = match_any_nonl}},
-    .sym = "\0any_nonl",
-    .sym_len = 9,
-};
+extern struct Symbol any_nonl_symbol;
+
+#endif
 

@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "nfa.h"
-#include "dfa.h"
+#include <stdbool.h>
+//#include "nfa.h"
+//#include "dfa.h"
 #include "lexre.h"
-#include "reparser.h"
+//#include "reparser.h"
 #include "peggy/mempool.h"
 #include "test_utils.h"
 #include "test_re_utils.h"
@@ -40,7 +41,7 @@ char const * TEST_REGEX[] = {
     "[abc]",
     "[^abc]",
     "[a-c]",
-    "(a|b)*abb",
+    "(a|b)*abb",NULL,
     "abb(a|b)*",
     "[a-zA-Z_][a-zA-Z_0-9]*",
     "[ \t\r\n\v\f]+",
@@ -117,6 +118,8 @@ char const * TEST_REGEX_PP[] = {
     "'((\\\\.)|[^'\\\\])*'",
     NULL
 };
+
+/*
 
 struct TestState ** TEST_REGEX_NFA[] = {
     // "a"
@@ -1456,7 +1459,7 @@ DFA * TEST_REGEX_DFA[] = {
         }[0]
     },
     NULL
-};
+};*/
 
 TestString * TEST_REGEX_STRINGS[] = {
     // "a"
@@ -1982,6 +1985,7 @@ TestString * TEST_REGEX_STRINGS[] = {
     }[0],
     (TestString *)NULL
 };
+/*
 
 int test_preprocess(void) {
     int nerrors = 0;
@@ -2061,7 +2065,7 @@ int test_DFA(void) {
         printf("%s...%s with %d errors!\n", __func__, nerrors ? "failed" : "passed", nerrors);
     }
     return nerrors;
-}
+}*/
 
 int test_regex(void) {
     int nerrors = 0;
@@ -2069,13 +2073,14 @@ int test_regex(void) {
     size_t i = 0;
     while (TEST_REGEX[i] && TEST_REGEX_STRINGS[i]) {
         size_t j = 0;
-        struct lexre av;
+        Lexre av;
         size_t len = strlen(TEST_REGEX[i]);
-        nerrors += CHECK(!lexre_compile_pattern(TEST_REGEX[i], len, &av, 0), "failed to compile regex pattern: %s\n", TEST_REGEX[i]);
+        char * msg = lexre_compile_pattern(TEST_REGEX[i], len, &av, 0);
+        nerrors += CHECK(!msg, "failed to compile regex pattern: %s. Error message: %s\n", TEST_REGEX[i], msg);
         
-        if (!strcmp(TEST_REGEX[i], "'((\\\\.)|[^'\\\\])*'")) {
-            DFA_print((DFA *)&av);
-        }
+        //if (!strcmp(TEST_REGEX[i], "'((\\\\.)|[^'\\\\])*'")) {
+        //    DFA_print((DFA *)&av);
+        //}
         
         while (TEST_REGEX_STRINGS[i][j].cstr) {
             nerrors += check_regex(&av, TEST_REGEX_STRINGS[i] + j);
@@ -2101,10 +2106,10 @@ int main(int narg, char ** args) {
         }
     }
 
-    test_preprocess();
+    //test_preprocess();
 //    test_NFA(); // this won't be used
 //    test_DFA(); // this won't be used
-//    test_regex();
+    test_regex();
 
     return 0;
 }

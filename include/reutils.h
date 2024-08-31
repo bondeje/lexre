@@ -1,3 +1,8 @@
+#ifndef REUTILS_H
+#define REUTILS_H
+
+#include <stdint.h>
+
 #ifndef CAT
     #define CAT_(x, y) x##y
     #define CAT(x, y) CAT_(x, y)
@@ -32,4 +37,8 @@
 #define REGEX_WAIT 3
 #define REGEX_WAIT_MATCH 4
 
-uint32_t to_uint32_t(char * str, unsigned char str_len);
+typedef struct RegExpr RegExpr;
+
+uint32_t to_uint32_t(char const * str, unsigned char str_len);
+
+#endif

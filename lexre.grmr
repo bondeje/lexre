@@ -6,14 +6,6 @@ punctuator:
 
 // characters are any unescaped normal printing characters. cannot be "." else sequence will capture everything
 
-// normally escaped character
-meta:
-    "[\\\\\\^$.[|()*+?{]"
-
-// escaped characters in character class
-char_class_meta:
-    "[\\\\\\-\\]\\^]"
-
 newline:
     "\n"
 
@@ -29,6 +21,7 @@ token:
 // characters that must be escaped: \^$.[|()*+?{
 non_escape:
     "[^\\\\^$.\\[|()*+?{]"
+    //"[^\\\\^$.\\[|()*?]" // not escaping '{' and '+' because they are handled by the preprocessor
 
 character_class:
     "[^\\\\\\-\\]\\^]"
@@ -71,7 +64,7 @@ lookahead(re_build_lookahead):
 lookbehind(re_build_lookahead):
     '(', '?', '<', ('=' | '!'), (escaped_character | non_rparen)+, ')'
 
-element(re_element):
+element(re_build_element):
     lookbehind | lookahead | '(', choice, ')' | char_class | symbol
 
 digit:

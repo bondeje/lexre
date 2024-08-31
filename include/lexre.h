@@ -4,15 +4,17 @@
 #include "peggy/mempool.h"
 #include "reutils.h"
 //#include "dfa.h"
-#include "regexpr.h"
 
 #ifndef REGEX_STATIC_BUFFER_SIZE
 #define REGEX_STATIC_BUFFER_SIZE 128
 #endif
 
 #define Lexre_get_byte(plexre) (plexre)->string[(plexre)->cursor]
-#define Lexre_seek2_SEEK_END(plexre, loc) ((plexre)->cursor = (plexre)->size - 1 - loc)
-#define Lexre_seek2_SEEK_SET(plexre, loc) ((plexre)->cursor = loc)
+// final 2 is SEEK_END
+#define Lexre_seek2_2(plexre, loc) ((plexre)->cursor = (plexre)->size - 1 - loc)
+// final 0 is SEEK_SET
+#define Lexre_seek2_0(plexre, loc) ((plexre)->cursor = loc)
+// final 1 is SEEK_CUR
 #define Lexre_seek2_SEEK_CUR(plexre, loc) ((plexre)->cursor += loc)
 #define Lexre_seek2(plexre, loc, dir) CAT(Lexre_seek2_, dir)(plexre, loc)
 #define Lexre_seek1(plexre, loc) Lexre_seek2(plexre, loc, SEEK_CUR)
@@ -26,7 +28,9 @@
 
 typedef struct Lexre {
     struct RegExpr const * entry;
-    MemPoolManager const * mgr; // memory pool for the RegExpr and subexpressions
+    MemPoolManager * mgr; // memory pool for the RegExpr and subexpressions
+    char const * regex_s;
+    size_t regex_len;
     char const * string;
     size_t size;
     size_t cursor;
@@ -40,29 +44,25 @@ struct MatchString {
     int len;
 };
 
-char * lexre_compile_pattern_buffered(const char * regex, const int regex_size,
-    struct Lexre * pattern_buffer, unsigned int flags, char * buffer, 
-    const int buffer_size);
-
 char * lexre_compile_pattern(const char * regex, const int regex_size,
     struct Lexre * av, unsigned int flags);
 
 int lexre_match(struct Lexre * av, const char * string, size_t size,
     size_t start);
 
-// for streaming mode
-int lexre_update(struct Lexre * av, const char * string, size_t size, size_t * cursor);
-
-void lexre_get_match(struct Lexre * av, struct MatchString * match, 
-    struct MatchString * unmatched);
-
 static inline void lexre_reset(struct Lexre * av) {
     av->cursor = 0;
     av->end = -1;
 }
 
-void lexre_free(struct lexre * av);
+void lexre_get_match(struct Lexre * av, struct MatchString * match);
+
+void lexre_free(struct Lexre * av);
+
+// for streaming mode
+/*
+int lexre_update(struct Lexre * av, const char * string, size_t size, size_t * cursor);
 
 int lexre_fprint(FILE * stream, struct lexre * av, HASH_MAP(pSymbol, pSymbol) * sym_map);
-
+*/
 #endif

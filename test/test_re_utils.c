@@ -4,6 +4,8 @@
 #include "test_utils.h"
 #include "test_re_utils.h"
 
+/*
+
 int check_Transition(NFATransition * trans, TestTransition * ref_trans, size_t ref_state_start) {
     int nerrors = 0;
     nerrors += check_Symbol(trans->symbol, &(Symbol){.sym = ref_trans->symbol, .sym_len = ref_trans->symbol_len}, 0);
@@ -111,21 +113,22 @@ int check_DFA(DFA * uut, DFA * ref) {
     
     return nerrors;
 }
+*/
 
-int check_regex(struct lexre * av, TestString * test) {
-    DFA * dfa = (DFA *)av;
+int check_regex(struct Lexre * av, TestString * test) {
+    //DFA * dfa = (DFA *)av;
     int nerrors = 0;
     size_t size = strlen(test->cstr);
     int status = lexre_match(av, test->cstr, size, 0);
     if (test->match.str) {
-        nerrors += CHECK(!(status < test->match.len || status > test->match.len), "does not match expected length for regex %.*s and input %s. expected: %d, found %d\n", dfa->regex_len, dfa->regex_s, test->cstr, test->match.len, status);
+        nerrors += CHECK(!(status < test->match.len || status > test->match.len), "does not match expected length for regex %.*s and input %s. expected: %d, found %d\n", av->regex_len, av->regex_s, test->cstr, test->match.len, status);
         if (!nerrors) {
             struct MatchString match;
-            lexre_get_match(av, &match, NULL);
-            nerrors += CHECK(!strncmp(match.str, test->match.str, test->match.len), "unexpected match value for regex %.*s and input %s. expected: %.*s, found: %.*s\n", dfa->regex_len, dfa->regex_s, test->cstr, test->match.len, test->match.str, match.len, match.str);
+            lexre_get_match(av, &match);
+            nerrors += CHECK(!strncmp(match.str, test->match.str, test->match.len), "unexpected match value for regex %.*s and input %s. expected: %.*s, found: %.*s\n", av->regex_len, av->regex_s, test->cstr, test->match.len, test->match.str, match.len, match.str);
         }
     } else {
-        nerrors += CHECK(status == -REGEX_FAIL, "unexpected status of failure test for regex %.*s and input %s. expected: %d, found %d\n", dfa->regex_len, dfa->regex_s, test->cstr, -REGEX_FAIL, status);
+        nerrors += CHECK(status == -REGEX_FAIL, "unexpected status of failure test for regex %.*s and input %s. expected: %d, found %d\n", av->regex_len, av->regex_s, test->cstr, -REGEX_FAIL, status);
     }
     return nerrors;
 }
