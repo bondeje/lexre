@@ -51,7 +51,7 @@ clean:
 	rm -rf $(BIN_DIR)/lib$(NAME).so $(BIN_DIR)/lib$(NAME)d.so $(BIN_DIR)/test
 	rm -f $(INC_DIR)/re.h $(SRC_DIR)/re.c *.log
 	rm -f $(SRC_DIR)/*.o $(SRC_DIR)/*.do
-	rm -f $(TEST_DIR)/*.o $(SRC_DIR)/*.do
+	rm -f $(TEST_DIR)/*.o $(TEST_DIR)/*.do
 
 .SUFFIXES: .c .o .do
 # should build in a compile flag to use PCRE2 if USE_PCRE2 is set

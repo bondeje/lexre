@@ -3,6 +3,7 @@ bin/test
 .vscode/
 lib/peggy
 test/gnu_test
+test/python_test
 
 # Prerequisites
 *.d
