@@ -32,8 +32,7 @@ int NFABuilder_build_DFA(NFABuilder * bldr, char const * regex, size_t regex_len
 
 ASTNode * re_build_symbol(Production * prod, Parser * parser, ASTNode * node);
 ASTNode * re_build_char_class(Production * prod, Parser * parser, ASTNode * node);
-ASTNode * re_build_lookahead(Production * prod, Parser * parser, ASTNode * node);
-ASTNode * re_build_lookbehind(Production * prod, Parser * parser, ASTNode * node);
+ASTNode * re_build_lookaround(Production * prod, Parser * parser, ASTNode * node);
 ASTNode * re_build_element(Production * prod, Parser * parser, ASTNode * node);
 ASTNode * re_build_repeated(Production * prod, Parser * parser, ASTNode * node);
 ASTNode * re_build_sequence(Production * prod, Parser * parser, ASTNode * node);

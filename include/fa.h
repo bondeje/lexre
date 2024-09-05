@@ -59,7 +59,7 @@ SymbolRangeASCII * SymbolRangeASCII_new(unsigned char low, unsigned char high, M
 
 typedef struct SymbolLookaround {
     Symbol symbol;
-    char * sym;
+    char const * sym;
     unsigned char sym_len;
     unsigned char flags; // bit 0 - positive/negative; bit 1 - forward/backward
 } SymbolLookaround;
@@ -76,7 +76,7 @@ extern struct Symbol * sym_bos;
 SymbolASCII * SymbolASCII_new(unsigned char sym, MemPoolManager * mgr);
 SymbolUnicode * SymbolUnicode_new(uint32_t sym, MemPoolManager * mgr);
 SymbolRangeASCII * SymbolRangeASCII_new(unsigned char low, unsigned char high, MemPoolManager * mgr);
-SymbolLookaround * SymbolLookaround_new(char * sym, unsigned char len, unsigned char flags, MemPoolManager * mgr);
+SymbolLookaround * SymbolLookaround_new(char const * sym, unsigned char len, unsigned char flags, MemPoolManager * mgr);
 
 int pSymbol_comp(Symbol * a, Symbol * b);
 size_t pSymbol_hash(Symbol * key, size_t hash);

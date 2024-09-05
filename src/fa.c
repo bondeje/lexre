@@ -322,7 +322,7 @@ SymbolInterface lookaround_inter = {
     .match = match_symbol_unicode
 };
 
-SymbolLookaround * SymbolLookaround_new(char * sym, unsigned char len, unsigned char flags, MemPoolManager * mgr) {
+SymbolLookaround * SymbolLookaround_new(char const * sym, unsigned char len, unsigned char flags, MemPoolManager * mgr) {
     SymbolLookaround * out = MemPoolManager_aligned_alloc(mgr, sizeof(SymbolLookaround), _Alignof(SymbolLookaround));
     *out = (SymbolLookaround) {
         .sym = sym,

@@ -58,10 +58,10 @@ unicode_seq:
 escaped_character:
     unicode_seq | simple_escape
 
-lookahead(re_build_lookahead):
+lookahead(re_build_lookaround):
     '(', '?', ('=' | '!'), choice, ')'
 
-lookbehind(re_build_lookahead):
+lookbehind(re_build_lookaround):
     '(', '?', '<', ('=' | '!'), (escaped_character | non_rparen)+, ')'
 
 element(re_build_element):

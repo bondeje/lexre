@@ -86,7 +86,7 @@ static inline Symbol * NFABuilder_get_symbol_range_ascii(NFABuilder * bldr, unsi
     return out; // even if get fails, out should equal NULL
 }
 
-static inline Symbol * NFABuilder_get_symbol_lookaround(NFABuilder * bldr, char * sym, unsigned char sym_len, unsigned char flags) {
+static inline Symbol * NFABuilder_get_symbol_lookaround(NFABuilder * bldr, char const * sym, unsigned char sym_len, unsigned char flags) {
     Symbol * out = NULL;
     bldr->symbol_map._class->get(&bldr->symbol_map, (Symbol *)&(SymbolLookaround){.sym = sym, .sym_len = sym_len, .flags = flags}, &out);
     return out; // even if get fails, out should equal NULL
@@ -96,55 +96,25 @@ static inline void NFABuilder_set_symbol(NFABuilder * bldr, Symbol * sym) {
     bldr->symbol_map._class->set(&bldr->symbol_map, sym, sym);
 }
 
+char get_simple_escape_character_(char byte) {
+    switch (byte) {
+        case 'a': return '\a';
+        case 'b': return '\b';
+        case 'f': return '\f';
+        case 'n': return '\n';
+        case 'r': return '\r';
+        case 't': return '\t';
+        case 'v': return '\v';
+        case '\'': return '\'';
+        case '"': return '"';
+        case '?': return '?';
+    }
+    return byte;
+}
+
 // node is the simple_escape node
 void get_simple_escape_character(ASTNode * node, char * byte) {
-    *byte = *node->children[1]->token_start->string;
-    switch (*byte) {
-        case 'a': {
-            *byte = '\a';
-            break;
-        }
-        case 'b': {
-            *byte = '\b';
-            break;
-        }
-        case 'f': {
-            *byte = '\f';
-            break;
-        }
-        case 'n': {
-            *byte = '\n';
-            break;
-        }
-        case 'r': {
-            *byte = '\r';
-            break;
-        }
-        case 't': {
-            *byte = '\t';
-            break;
-        }
-        case 'v': {
-            *byte = '\v';
-            break;
-        }
-        case '\\': {
-            *byte = '\\';
-            break;
-        }
-        case '\'': {
-            *byte = '\'';
-            break;
-        }
-        case '"': {
-            *byte = '"';
-            break;
-        }
-        case '?': {
-            *byte = '?';
-            break;
-        }
-    }
+    *byte = get_simple_escape_character_(*node->children[1]->token_start->string);
 }
 
 #define CHa 'a'
@@ -316,29 +286,236 @@ ASTNode * re_build_char_class(Production * prod, Parser * parser, ASTNode * node
     return NULL;
 }
 
-ASTNode * re_build_lookahead(Production * prod, Parser * parser, ASTNode * node) {
-    // TODO:
-    return NULL;
+void re_lookaround_preprocess(NFABuilder * bldr, ASTNode * node, _Bool behind, char const ** sym, unsigned char * len) {
+    unsigned char max_len = (unsigned char)ASTNode_string_length(node);
+    char const * src = node->children[0]->token_start->string;
+    unsigned char i = 0, j = 0;
+    char * dest = MemPoolManager_aligned_alloc(bldr->sym_pool, max_len, 1);
+    dest[j++] = src[i++];   // '('
+    dest[j++] = src[i++];   // '?'
+    if (behind) {
+        dest[j++] = src[i++];   // '<'
+    }
+    dest[j++] = src[i++];   // '='/'!'
+
+    while (i < max_len) {
+        if (src[i] == '\\') {
+            i++;
+            dest[j++] = get_simple_escape_character_(src[i++]);
+        } else {
+            dest[j++] = src[i++];
+        }
+    }
+    *sym = dest;
+    *len = j;
 }
-ASTNode * re_build_lookbehind(Production * prod, Parser * parser, ASTNode * node) {
-    // TODO:
-    return NULL;
+
+ASTNode * re_build_lookaround(Production * prod, Parser * parser, ASTNode * node) {
+    NFABuilder * bldr = (NFABuilder *)parser;
+
+    Symbol * new_sym = NULL;
+
+    char const * sym = NULL;
+    unsigned char sym_len = 0;
+    unsigned char flags = 0;
+    if (node->nchildren == 5) {
+        re_lookaround_preprocess(bldr, node, false, &sym, &sym_len);
+        flags |= SYMBOL_FLAG_FORWARD;
+        if (node->children[2]->rule->id == EQUALS) {
+            flags |= SYMBOL_FLAG_POSITIVE;
+        }
+    } else {
+        re_lookaround_preprocess(bldr, node, true, &sym, &sym_len);
+        if (node->children[3]->rule->id == EQUALS) {
+            flags |= SYMBOL_FLAG_POSITIVE;
+        }
+    }
+    
+    new_sym = NFABuilder_get_symbol_lookaround(bldr, sym, sym_len, flags);
+    if (!new_sym) {
+        new_sym = (Symbol *)SymbolLookaround_new(sym, sym_len, flags, bldr->sym_pool);
+    }
+
+    // build transition
+    NFATransition * trans = NFA_new_transition(bldr->nfa);
+    // build new states
+    NFAState * final = NFA_new_state(bldr->nfa);
+    NFAState * start = NFA_new_state(bldr->nfa);
+    *start = (NFAState) {.n_out = 1, .n_in = 0, .out = trans, .id = start->id};
+    *final = (NFAState) {.n_out = 0, .n_in = 1, .in = trans, .id = final->id};
+
+    // initialize transition for start to final state
+    *trans = (NFATransition) {.final = final, .next_in = NULL, .next_out = NULL, .start = start, .symbol = new_sym};
+
+    // build new node
+    NFANode * new_node = (NFANode *)Parser_add_node(parser, (Rule *)prod, node->token_start, node->token_end, node->str_length, 0, sizeof(NFANode));
+    *new_node = (NFANode) {.node = *node, .start = start, .final = final};
+    return (ASTNode *)new_node;
 }
+
+NFATransition * re_build_empty_transition(NFABuilder * bldr, NFAState * start, NFAState * final) {
+    NFATransition * trans = MemPoolManager_aligned_alloc(bldr->nfa->nfa_pool, sizeof(NFATransition), _Alignof(NFATransition));
+    *trans = (NFATransition) {.final = final, .start = start, .next_in = final->in, .next_out = start->out, .symbol= sym_empty};
+    final->in = trans;
+    final->n_in++;
+    start->out = trans;
+    start->n_out++;
+    return trans;
+}
+
+void get_digit_seq_decimal(ASTNode * node, unsigned int * dec) {
+    static const char zero = '0';
+    size_t n = node->nchildren;
+    if (!n) {
+        return;
+    }
+    char const * str = node->token_start->string;
+    unsigned int val = 0;
+    for (size_t i = 0; i < n; i++) {
+        val = val * 10 + (str[i] - zero);
+    }
+    *dec = val;
+}
+
 ASTNode * re_build_repeated(Production * prod, Parser * parser, ASTNode * node) {
-    // TODO:
-    return NULL;
+    if (!node->children[1]->nchildren) {
+        node->children[0]->rule = (Rule *)prod;
+        return node->children[0];
+    }
+
+    NFABuilder * bldr = (NFABuilder *)parser;
+    NFANode * element = (NFANode *)node->children[0];
+    ASTNode * rep = node->children[1]->children[0];
+    unsigned int min_rep = 0;
+    unsigned int max_rep = 0;
+    switch (rep->rule->id) {
+        case PLUS: {
+            min_rep = 1;
+            break;
+        }
+        case ASTERISK: {
+            break;
+        }
+        case QUESTION: {
+            max_rep = 1;
+            break;
+        }
+        default: {
+            get_digit_seq_decimal(rep->children[1], &min_rep);
+            if (!rep->children[2]->nchildren) {
+                max_rep = min_rep;
+            }
+            get_digit_seq_decimal(rep->children[3], &max_rep);
+        }
+    }
+
+    if (rep->rule->id == PLUS || (1 == min_rep && 0 == max_rep)) {
+        // no new states, just add an empty transition back to start of element
+        re_build_empty_transition(bldr, element->final, element->start);
+        node->children[0]->rule = (Rule *)prod;
+        return node->children[0];
+    } else if (rep->rule->id == QUESTION || (0 == min_rep && 1 == max_rep)) {
+        // no new states, just add an empty transition back to start of element and from start to final
+        re_build_empty_transition(bldr, element->start, element->final);
+        node->children[0]->rule = (Rule *)prod;
+        return node->children[0];
+    } else if (rep->rule->id == ASTERISK || (0 == min_rep && 0 == max_rep)) {
+        // no new states, just add an empty transition back to start of element and from start to final
+        re_build_empty_transition(bldr, element->final, element->start);
+        re_build_empty_transition(bldr, element->start, element->final);
+        node->children[0]->rule = (Rule *)prod;
+        return node->children[0];
+    }
+
+    // TODO: do a graph copy of element's subNFA for each min_rep > 1
+
+    // TODO: append optional copies of element's subNFA for each max_rep > min_rep
+    
+    return Parser_fail_node(parser);
 }
+
+void re_merge_states(NFAState * start, NFAState * final) {
+    // the start is the final node in a subNFA, which should have no transitions out
+    // the final is the start node of a subsequent NFA, which should have all the transitions
+    // for each transition in final, set the start state to start
+
+    // handle final->out by setting the starts to start
+    NFATransition * trans = final->out;
+    NFATransition * trans_start = trans;
+    trans->start = start;
+    while (trans->next_out) {
+        trans = trans->next_out;
+        trans->start = start;        
+    }
+    trans->next_out = start->out;
+    start->out = trans_start;
+    start->n_out += final->n_out;
+
+    // handle final->in by setting the finals to start
+    if (final->in) {
+        trans = final->in;
+        trans_start = trans;
+        trans->final = start;
+        while (trans->next_in) {
+            trans = trans->next_in;
+            trans->final = start;
+        }
+        trans->next_in = start->in;
+        start->in = trans_start;
+        start->n_in += final->n_in;
+    }
+    
+}
+
 ASTNode * re_build_sequence(Production * prod, Parser * parser, ASTNode * node) {
-    // TODO:
-    return NULL;
-}
+    if (node->nchildren == 1) {
+        node->children[0]->rule = (Rule *)prod;
+        return node->children[0];
+    }
+
+    NFABuilder * reb = (NFABuilder *)parser;
+    NFAState * start = ((NFANode *)node->children[0])->start;
+    NFAState * final = ((NFANode *)node->children[0])->final;
+    for (size_t i = 1; i < node->nchildren; i++) {
+        re_merge_states(final, ((NFANode *)node->children[i])->start);
+        final = ((NFANode *)node->children[i])->final;
+    }
+    NFANode * new_node = (NFANode *)Parser_add_node(parser, (Rule *)prod, node->token_start, node->token_end, node->str_length, 0, sizeof(NFANode));
+    new_node->node = *node;
+    new_node->start = start;
+    new_node->final = final;
+    return (ASTNode *)new_node;
+} 
+
 ASTNode * re_build_choice(Production * prod, Parser * parser, ASTNode * node) {
-    // TODO:
-    return NULL;
+    if (node->nchildren == 1) {
+        node->children[0]->rule = (Rule *)prod;
+        return node->children[0];
+    }
+
+    NFABuilder * bldr = (NFABuilder *)parser;
+    NFAState * start = ((NFANode *)node->children[0])->start;
+    NFAState * final = ((NFANode *)node->children[0])->final;
+
+    for (size_t i = 2; i < node->nchildren; i++) {
+        re_merge_states(start, ((NFANode *)node->children[i])->start);
+        re_merge_states(final, ((NFANode *)node->children[i])->final);
+    }
+
+    NFANode * new_node = (NFANode *)Parser_add_node(parser, (Rule *)prod, node->token_start, node->token_end, node->str_length, 0, sizeof(NFANode));
+    new_node->node = *node;
+    new_node->start = start;
+    new_node->final = final;
+    return (ASTNode *)new_node;
 }
+
 ASTNode * re_build_lexre(Production * prod, Parser * parser, ASTNode * node) {
-    // TODO:
-    return NULL;
+    NFABuilder * bldr = (NFABuilder *)parser;
+    NFANode * nfanode = (NFANode *)node;
+    bldr->nfa->start = nfanode->start;
+    bldr->nfa->final = nfanode->final;
+    // TODO: this would be an appropriate place to finish initializing NFA instead of in NFABuilder_build_DFA
+    return node;
 }
 
 
