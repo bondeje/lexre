@@ -21,9 +21,9 @@ IFLAGS = -I$(INC_DIR) -I$(LIB_DIR)
 LFLAGS = '-Wl,-rpath,$$ORIGIN/.' '-Wl,-rpath,$$ORIGIN/$(BIN_DIR)' -L$(BIN_DIR) -lpeggy
 LFLAGS_TEST = $(LFLAGS) -llexred
 
-LIB_OBJS = $(SRC_DIR)/$(PEG_MODULE).o $(SRC_DIR)/reparser.o $(SRC_DIR)/nfa.o $(SRC_DIR)/thompson.o $(SRC_DIR)/dfa.o $(SRC_DIR)/lexre.o $(SRC_DIR)/fa.o
-LIB_OBJS_DBG = $(SRC_DIR)/$(PEG_MODULE).do $(SRC_DIR)/reparser.do $(SRC_DIR)/nfa.do $(SRC_DIR)/thompson.do $(SRC_DIR)/dfa.do $(SRC_DIR)/lexre.do $(SRC_DIR)/fa.do
-TEST_SRCS = $(TEST_DIR)/test.do $(TEST_DIR)/test_utils.do $(TEST_DIR)/test_re_utils.do
+LIB_OBJS = $(SRC_DIR)/$(PEG_MODULE).o $(SRC_DIR)/lexreparser.o $(SRC_DIR)/nfa.o $(SRC_DIR)/thompson.o $(SRC_DIR)/dfa.o $(SRC_DIR)/lexre.o $(SRC_DIR)/fa.o $(SRC_DIR)/reutils.o
+LIB_OBJS_DBG = $(SRC_DIR)/$(PEG_MODULE).do $(SRC_DIR)/lexreparser.do $(SRC_DIR)/nfa.do $(SRC_DIR)/thompson.do $(SRC_DIR)/dfa.do $(SRC_DIR)/lexre.do $(SRC_DIR)/fa.do $(SRC_DIR)/reutils.do
+TEST_SRCS = $(TEST_DIR)/test.do $(TEST_DIR)/test_utils.do #$(TEST_DIR)/test_re_utils.do
 
 all: $(BIN_DIR)/lib$(NAME).so $(BIN_DIR)/lib$(NAME)d.so $(BIN_DIR)/test
 

@@ -1,5 +1,5 @@
-#ifndef RENFA_H
-#define RENFA_H
+#ifndef NFA_H
+#define NFA_H
 
 #include <stddef.h>
 #include "reutils.h"
@@ -37,14 +37,13 @@ BUILD_ALIGNMENT_STRUCT(NFAState)
 struct NFA {
     MemPoolManager * nfa_pool; // pool of data belonging to this nfa. The Transitions, the states, the preprocessed regex string
     // growing array of symbols. This will ultimately be transferred to the DFA definition
-    HASH_MAP(pSymbol, pSymbol) symbol_map;
     // growing array of NFAStates
+    MemPoolManager * sym_pool;
+    Symbol ** symbols;
+    size_t nsymbols;
     NFAState ** states;
     size_t nstates;
     size_t states_cap;
-    // preprocessed regex string
-    char const * regex_s_pp;
-    size_t regex_len_pp;
     // original regex string
     char const * regex_s;
     size_t regex_len;
@@ -60,7 +59,10 @@ void NFA_init(NFA * nfa);
 void NFA_dest(NFA * nfa);
 
 NFAState * NFA_new_state(NFA * nfa);
-Symbol * NFA_get_symbol(NFA * nfa, char const * sym, unsigned char len);
+Symbol * NFA_get_symbol_ascii(NFA * nfa, unsigned char sym);
+Symbol * NFA_get_symbol_unicode(NFA * nfa, uint32_t sym);
+Symbol * NFA_get_symbol_range_ascii(NFA * nfa, unsigned char low, unsigned char high);
+Symbol * NFA_get_symbol_lookaround(NFA * nfa, char * sym, unsigned char sym_len, unsigned char flags);
 NFATransition * NFA_new_transition(NFA * nfa);
 
 #endif

@@ -8,46 +8,58 @@
 #define REGEX_STATIC_BUFFER_SIZE 128
 #endif
 
-struct lexre {
+#define Lexre_get_byte(plexre) (plexre)->string[(plexre)->cursor]
+// final 2 is SEEK_END
+#define Lexre_seek2_2(plexre, loc) ((plexre)->cursor = (plexre)->size - 1 - loc)
+// final 0 is SEEK_SET
+#define Lexre_seek2_0(plexre, loc) ((plexre)->cursor = loc)
+// final 1 is SEEK_CUR
+#define Lexre_seek2_SEEK_CUR(plexre, loc) ((plexre)->cursor += loc)
+#define Lexre_seek2(plexre, loc, dir) CAT(Lexre_seek2_, dir)(plexre, loc)
+#define Lexre_seek1(plexre, loc) Lexre_seek2(plexre, loc, SEEK_CUR)
+#define Lexre_seek(plexre, ...) CAT(Lexre_seek, VARIADIC_SIZE(__VA_ARGS__))(plexre, __VA_ARGS__)
+#define Lexre_tell(plexre) (plexre)->cursor
+#define Lexre_remain(plexre) ((plexre)->size - (plexre)->cursor)
+
+#define Lexre_advance1(plexre) (plexre)->cursor++
+#define Lexre_advance2(plexre, nbytes) Lexre_seek2_SEEK_CUR(plexre, nbytes)
+#define Lexre_advance(...) CAT(Lexre_advance, VARIADIC_SIZE(__VA_ARGS__))(__VA_ARGS__)
+
+struct Lexre {
     DFA dfa;
     int cur_state;       // internal use state tracking
-    char * buffer;          // buffer of characters passed to DFA
-    int ibuffer;            // location of cursor in buffer
-    int buffer_size;        // size of buffer
-    int end;                // end of match in buffer(one past). -1 if no matches found
+    unsigned char * string; 
+    size_t size;
     unsigned int flags;     // flags for operation of the DFA. flags should account for the properties of the buffer (user provided)
+    int end;
+    int cursor;
 };
 
-struct MatchString {
-    char const * str;
+typedef struct MatchString {
+    unsigned char const * str;
     int len;
-};
-
-char * lexre_compile_pattern_buffered(const char * regex, const int regex_size,
-    struct lexre * pattern_buffer, unsigned int flags, char * buffer, 
-    const int buffer_size);
+} MatchString;
 
 char * lexre_compile_pattern(const char * regex, const int regex_size,
-    struct lexre * av,
+    Lexre * av,
     unsigned int flags);
 
-int lexre_match(struct lexre * av, const char * string, size_t size,
+int lexre_match(Lexre * av, const char * string, size_t size,
     size_t start);
 
 // for streaming mode
-int lexre_update(struct lexre * av, const char * string, size_t size, size_t * cursor);
+int lexre_update(Lexre * av, const char * string, size_t size, size_t * cursor);
 
-void lexre_get_match(struct lexre * av, struct MatchString * match, 
-    struct MatchString * unmatched);
+MatchString lexre_get_match(Lexre * av);
 
-static inline void lexre_reset(struct lexre * av) {
+static inline void lexre_reset(Lexre * av) {
     av->cur_state = 0;
-    av->ibuffer = 0;
+    av->cursor = 0;
     av->end = -1;
 }
 
-void lexre_free(struct lexre * av);
+void lexre_free(Lexre * av);
 
-int lexre_fprint(FILE * stream, struct lexre * av, HASH_MAP(pSymbol, pSymbol) * sym_map);
+int lexre_fprint(FILE * stream, Lexre * av, HASH_MAP(pSymbol, LString) * sym_map);
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef REDFA_H
-#define REDFA_H
+#ifndef DFA_H
+#define DFA_H
 
 #include <stddef.h>
 #include "peggy/mempool.h"
@@ -41,15 +41,14 @@ struct DFA {
 #define DFA_is_accepting(pDFA, index) ((pDFA)->states + index)->accepting
 
 // returns 0 on success, else error
-int DFA_check(DFAState const * cur_state, char const * str, size_t const len, size_t * cursor, int * final);
+int DFA_check(Lexre * lex, DFAState const * cur_state, char const * str, size_t const len, size_t * cursor, int * final);
 void DFA_dest(DFA * dfa);
 
-int DFATransition_fprint(FILE * stream, DFATransition * trans, HASH_MAP(pSymbol, pSymbol) * sym_map);
+int DFATransition_fprint(FILE * stream, DFATransition * trans, HASH_MAP(pSymbol, LString) * sym_map);
 
-int DFAState_fprint(FILE * stream, DFAState * state, HASH_MAP(pSymbol, pSymbol) * sym_map);
+int DFAState_fprint(FILE * stream, DFAState * state, HASH_MAP(pSymbol, LString) * sym_map);
 
-int DFA_fprint(FILE * stream, DFA * dfa, HASH_MAP(pSymbol, pSymbol) * sym_map);
-int DFA_print(DFA * dfa);
+int DFA_fprint(FILE * stream, DFA * dfa, HASH_MAP(pSymbol, LString) * sym_map);
 
 #endif
 

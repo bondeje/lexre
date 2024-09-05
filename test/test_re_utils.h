@@ -48,4 +48,4 @@ int check_DFATransition(DFATransition ** uut, DFATransition ** ref, int i);
 int check_DFA(DFA * uut, DFA * ref);
 
 //int check_regex(DFA * dfa, TestString * test);
-int check_regex(struct lexre * av, TestString * test);
+int check_regex(Lexre * av, TestString * test);
